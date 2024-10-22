@@ -30,6 +30,8 @@ WOOTINGANALOGSDK_API void wooting_set_disconnected_cb(void(*cb)())
 	// ¯\_(ツ)_/¯
 }
 
+extern uint8_t hid_to_wooting_scancode_map[256];
+
 #if DEBUG
 	static bool attached = false;
 #endif
@@ -39,9 +41,22 @@ WOOTINGANALOGSDK_API void wooting_set_disconnected_cb(void(*cb)())
 	static soup::AnalogueKeyboard akbd;
 	static uint8_t most_recent_data[32];
 	static unsigned int most_recent_data_length = 0;
-#endif
 
-extern uint8_t hid_to_wooting_scancode_map[256];
+	static void refresh_data()
+	{
+		unsigned int i = 0;
+		for (const auto& key : akbd.getActiveKeys())
+		{
+			most_recent_data[i * 2 + 0] = hid_to_wooting_scancode_map[key.getHidScancode()]; static_assert(sizeof(decltype(key.getHidScancode())) == 1);
+			most_recent_data[i * 2 + 1] = static_cast<uint8_t>(key.fvalue * 255.0f);
+			if (++i == 16) [[unlikely]]
+			{
+				break;
+			}
+		}
+		most_recent_data_length = i;
+	}
+#endif
 
 WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int byte_length)
 {
@@ -118,34 +133,25 @@ WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int b
 		}
 	}
 
-	if (akbd.isPoll() || akbd.hid.hasReport())
+	if (akbd.isPoll())
 	{
-		unsigned int i = 0;
-		for (const auto& key : akbd.getActiveKeys())
-		{
-			if (i == length) [[unlikely]]
-			{
-				break;
-			}
-
-			data[i * 2 + 0] = hid_to_wooting_scancode_map[key.getHidScancode()]; static_assert(sizeof(decltype(key.getHidScancode())) == 1);
-			data[i * 2 + 1] = static_cast<uint8_t>(key.fvalue * 255.0f);
-			++i;
-		}
-		memcpy(most_recent_data, data, i * 2);
-		most_recent_data_length = i;
-		return i;
+		refresh_data();
 	}
 	else
 	{
-		unsigned int i = most_recent_data_length;
-		if (i > length)
+		while (akbd.hid.hasReport() && !akbd.disconnected)
 		{
-			i = length;
+			refresh_data();
 		}
-		memcpy(data, most_recent_data, i * 2);
-		return i;
 	}
+
+	unsigned int i = most_recent_data_length;
+	if (i > length)
+	{
+		i = length;
+	}
+	memcpy(data, most_recent_data, i * 2);
+	return i;
 #endif
 }
 
