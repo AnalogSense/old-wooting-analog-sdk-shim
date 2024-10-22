@@ -1,0 +1,6 @@
+name wooting-analog-sdk
+dynamic
++*.cpp
+
+arg -m32
+require ../../Soup/soup
