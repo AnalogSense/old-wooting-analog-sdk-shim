@@ -27,23 +27,11 @@ WOOTINGANALOGSDK_API void wooting_set_disconnected_cb(void(*cb)())
 	static bool inited = false;
 #else
 	static soup::AnalogueKeyboard akbd;
+	static uint8_t most_recent_data[32];
+	static unsigned int most_recent_data_length = 0;
 #endif
 
 extern uint8_t hid_to_wooting_scancode_map[256];
-
-static uint8_t map_hid_to_wooting_scancode(uint8_t hid_scancode) noexcept
-{
-	if (hid_scancode > 255) [[unlikely]]
-	{
-		return 255;
-	}
-	return hid_to_wooting_scancode_map[hid_scancode];
-}
-
-#ifndef USE_SDK
-	uint8_t most_recent_data[32];
-	unsigned int most_recent_data_length = 0;
-#endif
 
 WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int byte_length)
 {
@@ -77,7 +65,12 @@ WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int b
 
 	for (int i = 0; i != n; ++i)
 	{
-		data[i * 2 + 0] = map_hid_to_wooting_scancode(scancodes[i]);
+		uint8_t mapped_scancode = 255;
+		if (scancodes[i] < 256)
+		{
+			mapped_scancode = hid_to_wooting_scancode_map[scancodes[i]];
+		}
+		data[i * 2 + 0] = mapped_scancode;
 		data[i * 2 + 1] = static_cast<uint8_t>(values[i] * 255.0f);
 	}
 	return n;
@@ -105,7 +98,7 @@ WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int b
 				break;
 			}
 
-			data[i * 2 + 0] = map_hid_to_wooting_scancode(key.getHidScancode());
+			data[i * 2 + 0] = hid_to_wooting_scancode_map[key.getHidScancode()]; static_assert(sizeof(decltype(key.getHidScancode())) == 1);
 			data[i * 2 + 1] = static_cast<uint8_t>(key.fvalue * 255.0f);
 			++i;
 		}
