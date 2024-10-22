@@ -75,14 +75,14 @@ WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int b
 	}
 	return n;
 #else
-	if (!akbd.hid.isValid()) [[unlikely]]
+	if (!akbd.hid.isValid() || akbd.disconnected) [[unlikely]]
 	{
 		for (auto& a : soup::AnalogueKeyboard::getAll())
 		{
 			akbd = std::move(a);
 			break;
 		}
-		if (!akbd.hid.isValid()) [[unlikely]]
+		if (!akbd.hid.isValid() || akbd.disconnected) [[unlikely]]
 		{
 			return 0;
 		}
