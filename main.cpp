@@ -1,3 +1,10 @@
+#define DEBUG false
+
+#if DEBUG
+	#include <Windows.h>
+	#include <iostream>
+#endif
+
 #ifdef USE_SDK
 	#include "wooting-analog-wrapper.h"
 
@@ -23,6 +30,9 @@ WOOTINGANALOGSDK_API void wooting_set_disconnected_cb(void(*cb)())
 	// ¯\_(ツ)_/¯
 }
 
+#if DEBUG
+	static bool attached = false;
+#endif
 #ifdef USE_SDK
 	static bool inited = false;
 #else
@@ -35,6 +45,20 @@ extern uint8_t hid_to_wooting_scancode_map[256];
 
 WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int byte_length)
 {
+#if DEBUG
+	if (!attached)
+	{
+		AllocConsole();
+
+		FILE* f;
+		freopen_s(&f, "CONIN$", "r", stdin);
+		freopen_s(&f, "CONOUT$", "w", stderr);
+		freopen_s(&f, "CONOUT$", "w", stdout);
+
+		attached = true;
+	}
+#endif
+
 #ifdef USE_SDK
 	if (!inited) [[unlikely]]
 	{
@@ -79,11 +103,17 @@ WOOTINGANALOGSDK_API int wooting_read_full_buffer(uint8_t data[], unsigned int b
 	{
 		for (auto& a : soup::AnalogueKeyboard::getAll())
 		{
+#if DEBUG
+			std::cout << "Using " << a.name << std::endl;
+#endif
 			akbd = std::move(a);
 			break;
 		}
 		if (!akbd.hid.isValid() || akbd.disconnected) [[unlikely]]
 		{
+#if DEBUG
+			std::cout << "No analogue keyboard found" << std::endl;
+#endif
 			return 0;
 		}
 	}
