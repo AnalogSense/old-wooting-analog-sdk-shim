@@ -3,4 +3,4 @@ dynamic
 +*.cpp
 
 arg -m32
-require ../../Soup/soup
+require Soup/soup
